@@ -858,6 +858,51 @@
     border-radius: 0;
   }
 
+  /* Table toolbar — search + result count */
+  .table-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+  }
+  .table-search {
+    display: flex;
+    border: 1px solid var(--line-2);
+    background: var(--bg);
+    flex: 1;
+    max-width: 480px;
+  }
+  #table-search-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 13px;
+    padding: 10px 14px;
+    outline: none;
+  }
+  #table-search-input:focus { background: var(--panel); }
+  #table-search-input::placeholder { color: var(--text-mute); }
+  .table-search-clear {
+    background: transparent;
+    border: none;
+    border-left: 1px solid var(--line-2);
+    color: var(--text-mute);
+    padding: 0 14px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  .table-search-clear:hover { color: var(--accent); }
+  .table-search-results {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-mute);
+    letter-spacing: 0.08em;
+  }
+  .table-search-results b { color: var(--accent); }
+
   /* Table */
   table.data {
     width: 100%;
@@ -875,6 +920,26 @@
     border-bottom: 1px solid var(--line-2);
     background: var(--bg-2);
     position: sticky; top: 0;
+  }
+  table.data thead th.sortable {
+    cursor: pointer;
+    user-select: none;
+    transition: color 0.12s, background 0.12s;
+  }
+  table.data thead th.sortable:hover {
+    color: var(--text);
+    background: var(--panel);
+  }
+  table.data thead th.sortable.active {
+    color: var(--accent);
+    background: var(--info-bg);
+  }
+  table.data thead th .sort-ind {
+    display: inline-block;
+    width: 10px;
+    margin-left: 4px;
+    color: var(--accent);
+    font-size: 10px;
   }
   table.data tbody td {
     padding: 12px 14px;
@@ -1079,6 +1144,64 @@
     cursor: pointer;
   }
   .source-status #refresh-btn:disabled { opacity: 0.6; cursor: wait; }
+
+  .source-status .auto-refresh-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    color: var(--accent);
+    border: 1px solid var(--line-2);
+    background: var(--bg-3);
+    padding: 4px 8px;
+    margin-right: 8px;
+    cursor: help;
+  }
+  .source-status .auto-refresh-status::before {
+    content: '';
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: auto-refresh-pulse 2.5s ease-in-out infinite;
+  }
+  @keyframes auto-refresh-pulse {
+    0%, 100% { opacity: 0.4; }
+    50%      { opacity: 1; }
+  }
+
+  /* Hazard "Last Updated" badge — sits alongside the AUTO indicator,
+     colours change as data ages past the 15-min refresh window. */
+  .source-status .hazard-last-refresh {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.06em;
+    border: 1px solid var(--line-2);
+    background: var(--bg-3);
+    padding: 4px 8px;
+    margin-right: 8px;
+    cursor: help;
+    color: var(--text-dim);
+  }
+  .source-status .hazard-last-refresh .hlr-label {
+    color: var(--text-mute);
+    letter-spacing: 0.12em;
+  }
+  .source-status .hazard-last-refresh .hlr-time { color: var(--text); font-weight: 600; }
+  .source-status .hazard-last-refresh .hlr-ago  { color: var(--accent); }
+  .source-status .hazard-last-refresh.stale {
+    border-color: var(--warn);
+  }
+  .source-status .hazard-last-refresh.stale .hlr-ago { color: var(--warn); }
+  .source-status .hazard-last-refresh.very-stale {
+    border-color: var(--crit);
+    background: var(--crit-bg);
+  }
+  .source-status .hazard-last-refresh.very-stale .hlr-ago { color: var(--crit); font-weight: 700; }
 
   /* Refresh feedback banner */
   .refresh-banner {
@@ -1912,10 +2035,10 @@
   }
   .sg-meta b { color: var(--text-dim); font-weight: 500; }
 
-  .sg-last-updated {
+  .sg-nea-reading {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     margin-top: 10px;
     padding: 6px 12px;
     background: var(--bg-3);
@@ -1925,29 +2048,22 @@
     font-size: 11px;
     flex-wrap: wrap;
   }
-  .sg-last-updated.stale {
-    border-left-color: var(--warn);
-  }
-  .sg-last-updated.very-stale {
-    border-left-color: var(--crit);
-  }
-  .sg-last-updated .lu-label {
+  .sg-nea-reading .nrt-label {
     color: var(--text-mute);
     font-size: 10px;
     letter-spacing: 0.12em;
     text-transform: uppercase;
   }
-  .sg-last-updated .lu-time {
+  .sg-nea-reading .nrt-time {
     color: var(--text);
     font-weight: 600;
   }
-  .sg-last-updated .lu-ago {
-    color: var(--accent);
+  .sg-nea-reading .nrt-source {
+    color: var(--text-mute);
     font-size: 10px;
-    letter-spacing: 0.05em;
+    padding-left: 8px;
+    border-left: 1px solid var(--line);
   }
-  .sg-last-updated.stale .lu-ago { color: var(--warn); }
-  .sg-last-updated.very-stale .lu-ago { color: var(--crit); }
   .sg-refresh {
     background: var(--accent);
     color: var(--bg);
@@ -2120,6 +2236,34 @@
   }
   .sg-map-status.live { color: var(--ok); border-color: var(--ok); }
   .sg-map-status.mock { color: var(--warn); border-color: var(--warn); }
+
+  /* Per-layer last-refresh indicator on the SG map (below the LIVE/MOCK status) */
+  .sg-map-layer-refresh {
+    position: absolute;
+    top: 50px;
+    left: 12px;
+    z-index: 700;
+    background: rgba(17, 24, 33, 0.92);
+    border: 1px solid var(--line-2);
+    padding: 4px 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    backdrop-filter: blur(4px);
+    cursor: help;
+  }
+  .sg-map-layer-refresh .lr-label {
+    color: var(--text-mute);
+    letter-spacing: 0.1em;
+  }
+  .sg-map-layer-refresh .lr-time {
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .sg-map-layer-refresh.stale .lr-time { color: var(--warn); }
+  .sg-map-layer-refresh.very-stale .lr-time { color: var(--crit); }
 
   /* Leaflet customisation */
   .leaflet-container {
@@ -2870,16 +3014,23 @@
   </section>
 
   <section class="view" id="table-view">
+    <div class="table-toolbar">
+      <div class="table-search">
+        <input type="text" id="table-search-input" placeholder="🔍 Search country, hazard, source, severity…" autocomplete="off" oninput="handleTableSearch(this.value)" />
+        <button class="table-search-clear" onclick="clearTableSearch()" title="Clear search">✕</button>
+      </div>
+      <div class="table-search-results" id="table-search-results"></div>
+    </div>
     <table class="data">
       <thead>
         <tr>
-          <th>Country</th>
-          <th>Hazard</th>
-          <th>Severity</th>
-          <th>Threshold</th>
-          <th>Incident Time</th>
-          <th>Source</th>
-          <th>Age</th>
+          <th class="sortable" data-sort-key="name"      onclick="sortTableBy('name')">Country <span class="sort-ind"></span></th>
+          <th class="sortable" data-sort-key="event"     onclick="sortTableBy('event')">Hazard <span class="sort-ind"></span></th>
+          <th class="sortable" data-sort-key="severity"  onclick="sortTableBy('severity')">Severity <span class="sort-ind"></span></th>
+          <th class="sortable" data-sort-key="threshold" onclick="sortTableBy('threshold')">Threshold <span class="sort-ind"></span></th>
+          <th class="sortable active desc" data-sort-key="updated" onclick="sortTableBy('updated')">Incident Time <span class="sort-ind">▼</span></th>
+          <th class="sortable" data-sort-key="source"    onclick="sortTableBy('source')">Source <span class="sort-ind"></span></th>
+          <th class="sortable" data-sort-key="updated"   onclick="sortTableBy('updated')">Age <span class="sort-ind"></span></th>
           <th>Action</th>
         </tr>
       </thead>
@@ -2897,10 +3048,10 @@
         <div>
           <div class="sg-title">⬢ SINGAPORE — Environmental Status</div>
           <div class="sg-meta">Source: <b>NEA</b> via data.gov.sg · <span id="sg-status">◌ Loading…</span></div>
-          <div class="sg-last-updated">
-            <span class="lu-label">LAST UPDATED:</span>
-            <span class="lu-time" id="sg-lu-time">—</span>
-            <span class="lu-ago" id="sg-lu-ago"></span>
+          <div class="sg-nea-reading" id="sg-nea-reading">
+            <span class="nrt-label">NEA READING:</span>
+            <span class="nrt-time" id="sg-nrt-time">—</span>
+            <span class="nrt-source">via data.gov.sg</span>
           </div>
         </div>
       </div>
@@ -2939,12 +3090,15 @@
             <button data-layer="pm25"><span class="icon">◈</span> PM2.5</button>
             <button data-layer="temp"><span class="icon">🌡</span> Temperature</button>
             <button data-layer="rain"><span class="icon">☂</span> Rainfall</button>
-            <button data-layer="wind"><span class="icon">◉</span> Wind</button>
           </div>
         </div>
         <div id="sg-map-box">
           <div id="sg-leaflet-map"></div>
           <div class="sg-map-status" id="sg-map-status">◌ Loading map…</div>
+          <div class="sg-map-layer-refresh" id="sg-map-layer-refresh" title="Time when the active layer was last refreshed">
+            <span class="lr-label">LAYER REFRESHED:</span>
+            <span class="lr-time" id="sg-map-layer-refresh-time">—</span>
+          </div>
           <div class="sg-map-legend" id="sg-map-legend">
             <div class="title">Legend</div>
             <div id="sg-map-legend-rows"></div>
@@ -3780,7 +3934,17 @@ function rebuildDATA() {
   // Mock alerts as fallback for hazards with no live data
   MOCK_ALERTS.forEach(a => { if (!useLive[a.hazard]) alerts.push({ ...a, mock: true }); });
 
-  DATA = [...NOMINAL, ...alerts];
+  // 30-day window: drop incidents older than 30 days. Nominal entries are
+  // never time-bound — they represent country status, not events — so they
+  // pass through unfiltered.
+  const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  const recentAlerts = alerts.filter(a => {
+    if (!a.updated) return false; // no timestamp = drop
+    const t = new Date(a.updated).getTime();
+    return !isNaN(t) && t >= cutoff;
+  });
+
+  DATA = [...NOMINAL, ...recentAlerts];
   activeAlerts = DATA.filter(d => !d.nominal);
 }
 
@@ -3827,6 +3991,20 @@ async function refreshAllLiveData(opts = {}) {
   if (typeof updateSGLastUpdated === 'function') updateSGLastUpdated();
 
   setSourceStatusUI(false);
+
+  // Manual refresh resets the auto-refresh schedule — both data buckets
+  // are now fresh, so the next auto-tick should be a full interval away.
+  lastHazardAutoRefresh = Date.now();
+  lastSGAutoRefresh = Date.now();
+  lastTempAutoRefresh = Date.now();
+  lastRainAutoRefresh = Date.now();
+  // Manual refresh also marks every layer's freshness timestamp
+  const nowIso = new Date().toISOString();
+  layerLastRefresh.psi  = nowIso;
+  layerLastRefresh.pm25 = nowIso;
+  layerLastRefresh.temp = nowIso;
+  layerLastRefresh.rain = nowIso;
+  updateHazardLastRefreshed(nowIso);
 
   // Summary toast
   if (showToast) {
@@ -3895,7 +4073,10 @@ function setSourceStatusUI(refreshing) {
     }
     return `<span class="src ${cls}">${icon} ${s.label} <b>${s.count}</b>${extra}</span>`;
   }).join('');
-  el.innerHTML = items + refreshBtn;
+  // Small auto-refresh indicator showing next scheduled tick
+  const autoLbl = `<span class="auto-refresh-status" id="auto-refresh-status" title="Hazards refresh every 15 min · SG full refresh every 1 hour · Temperature & Rainfall stations every 5 min">⟳ AUTO</span>`;
+  const lastRefreshLbl = `<span class="hazard-last-refresh" id="hazard-last-refresh" title="Time of last successful hazard data refresh"><span class="hlr-label">LAST UPDATED</span><span class="hlr-time" id="hazard-lr-time">—</span><span class="hlr-ago" id="hazard-lr-ago"></span></span>`;
+  el.innerHTML = items + lastRefreshLbl + autoLbl + refreshBtn;
 }
 
 // =============================================================
@@ -3930,7 +4111,7 @@ function pm25Band(v) {
 // 31.0–31.9 Yellow — caution
 // 32.0–32.9 Red — danger
 // 33.0–34.9 Black — extreme (work-rest enforced)
-// ≥35.0   White — off-scale (gear off / training cease)
+// ≥35.0   Light grey — off-scale (gear off / training cease)
 function tempBand(v) {
   if (v == null) return { name: '—', sev: 'info', color: '#5a6b7e', textColor: '#e6edf3' };
   if (v < 30)  return { name: 'Low',          sev: 'info',  color: '#ffffff', textColor: '#000000' };
@@ -3938,7 +4119,7 @@ function tempBand(v) {
   if (v < 32)  return { name: 'Caution',      sev: 'watch', color: '#f1c40f', textColor: '#000000' };
   if (v < 33)  return { name: 'Danger',       sev: 'warn',  color: '#e74c3c', textColor: '#ffffff' };
   if (v < 35)  return { name: 'Extreme',      sev: 'crit',  color: '#000000', textColor: '#ffffff' };
-  return               { name: 'Off-scale',   sev: 'crit',  color: '#ffffff', textColor: '#000000' };
+  return               { name: 'Off-scale',   sev: 'crit',  color: '#bfc7d2', textColor: '#000000' };
 }
 
 function generateMockSGData() {
@@ -4292,16 +4473,14 @@ function generateMockTempHistory(lat, lng, range) {  const days = AQ_RANGES[rang
   return series;
 }
 
-  // Update the "LAST UPDATED" banner in SG Focus. Pulls the most recent timestamp
-// from the actual NEA data (not the local fetch time — that just reflects when
-// our dashboard talked to data.gov.sg, not when NEA published the reading).
+  // Show the timestamp NEA itself published the data (e.g. "16:00 SGT, Mon 27 Apr").
+// This tells the officer which hourly bulletin the readings came from — much
+// more useful than "fetched 3 minutes ago" since NEA publishes hourly.
 function updateSGLastUpdated() {
-  const timeEl = document.getElementById('sg-lu-time');
-  const agoEl  = document.getElementById('sg-lu-ago');
-  const wrap   = document.querySelector('.sg-last-updated');
-  if (!timeEl || !agoEl || !wrap) return;
+  const timeEl = document.getElementById('sg-nrt-time');
+  if (!timeEl) return;
 
-  // Find the most recent timestamp across all loaded data streams
+  // Find the most recent NEA-published timestamp across all loaded streams
   const candidates = [];
   if (sgData.items?.length) candidates.push(new Date(sgData.items[sgData.items.length - 1].timestamp));
   if (sgData.pm25Items?.length) candidates.push(new Date(sgData.pm25Items[sgData.pm25Items.length - 1].timestamp));
@@ -4309,44 +4488,30 @@ function updateSGLastUpdated() {
 
   if (!candidates.length) {
     timeEl.textContent = '—';
-    agoEl.textContent = '';
     return;
   }
 
-  // Most recent reading
   const latest = new Date(Math.max(...candidates.map(d => d.getTime())));
 
-  // Format as Singapore local time with date
-  const formatted = new Intl.DateTimeFormat('en-GB', {
+  // Format: "16:00 SGT · Mon 27 Apr 2026"
+  const hourMin = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Singapore',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(latest);
+  const dateStr = new Intl.DateTimeFormat('en-GB', {
     timeZone: 'Asia/Singapore',
     weekday: 'short',
     day: '2-digit',
     month: 'short',
     year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
   }).format(latest);
-  timeEl.textContent = formatted + ' SGT';
 
-  // "X ago" relative time
-  const diffSec = Math.floor((Date.now() - latest.getTime()) / 1000);
-  let agoStr;
-  if (diffSec < 0)           agoStr = '(just published)';
-  else if (diffSec < 60)     agoStr = `(${diffSec}s ago)`;
-  else if (diffSec < 3600)   agoStr = `(${Math.floor(diffSec/60)}m ago)`;
-  else if (diffSec < 86400)  agoStr = `(${Math.floor(diffSec/3600)}h ago)`;
-  else                       agoStr = `(${Math.floor(diffSec/86400)}d ago)`;
+  let display = `${hourMin} SGT · ${dateStr}`;
+  if (!sgData.live) display += ' · MOCK';
 
-  // Add data-type indicator if mock
-  if (!sgData.live) agoStr += ' · MOCK';
-
-  agoEl.textContent = agoStr;
-
-  // Colour-code staleness — 15min fresh, 15-60min warning, >60min critical
-  wrap.classList.remove('stale', 'very-stale');
-  if (diffSec > 3600)       wrap.classList.add('very-stale');
-  else if (diffSec > 900)   wrap.classList.add('stale');
+  timeEl.textContent = display;
 }
 
 // Tick the relative time every 15s so "X ago" stays fresh even without re-render
@@ -4508,23 +4673,37 @@ const SG_REGION_POLYGONS = {
 // likely to give us the FULL station list — proxies often serve cached or
 // partial responses that only contain 1-2 stations.
 async function fetchOneSGEndpoint(path) {
-  const directUrl = `https://api.data.gov.sg/v1/environment/${path}`;
-  // 1) Direct fetch (no CORS proxy)
+  // v2 endpoint paths use the same suffix as v1, so a single map covers both.
+  const v2Url = `https://api-open.data.gov.sg/v2/real-time/api/${path}`;
+  const v1Url = `https://api.data.gov.sg/v1/environment/${path}`;
+
+  // 1) Direct fetch v2 (preferred — full station list, current shape)
   try {
-    const r = await fetch(directUrl, { cache: 'no-store' });
+    const r = await fetch(v2Url, { cache: 'no-store' });
     if (r.ok) {
       const data = await r.json();
-      // Validate: real responses always have metadata.stations array
+      // v2 valid response: data.stations array present
+      if (data?.data?.stations?.length > 0) return data;
+    }
+  } catch (e) { /* fall through */ }
+
+  // 2) Direct fetch v1 (legacy fallback)
+  try {
+    const r = await fetch(v1Url, { cache: 'no-store' });
+    if (r.ok) {
+      const data = await r.json();
       if (data?.metadata?.stations?.length > 0) return data;
     }
   } catch (e) { /* fall through */ }
-  // 2) Proxy race fallback
+
+  // 3) Proxy race over v2 (last resort for locked-down networks)
   try {
-    const r = await fetchWithCORS(directUrl);
-    return await r.json();
-  } catch (e) {
-    return null;
-  }
+    const r = await fetchWithCORS(v2Url);
+    const data = await r.json();
+    if (data?.data?.stations || data?.metadata?.stations) return data;
+  } catch (e) { /* fall through */ }
+
+  return null;
 }
 
 // Try the local Puppeteer/Express backend first — it does the NEA fetch
@@ -4596,7 +4775,38 @@ async function fetchSGWeatherData() {
 }
 
 function parseSGStations(apiResponse) {
-  // data.gov.sg format: metadata.stations is the list with coords; items[0].readings holds values
+  // data.gov.sg has TWO API formats. The v2 endpoint
+  // (api-open.data.gov.sg/v2/real-time/api/...) returns the full station list
+  // and is the recommended one. The legacy v1 endpoint
+  // (api.data.gov.sg/v1/environment/...) is still up but often serves partial
+  // data. We support both shapes here, preferring v2 when present.
+  if (!apiResponse) return [];
+
+  // ----- v2 format -----
+  // {
+  //   data: {
+  //     stations: [{ id, deviceId, name, location: { latitude, longitude } }],
+  //     readings: [{ timestamp, data: [{ stationId, value }] }]
+  //   }
+  // }
+  if (apiResponse?.data?.stations && apiResponse?.data?.readings) {
+    const stations = apiResponse.data.stations || [];
+    const readings = apiResponse.data.readings?.[0]?.data || [];
+    const byId = {};
+    readings.forEach(r => { byId[r.stationId] = r.value; });
+    return stations
+      .map(s => ({
+        id: s.id || s.deviceId,
+        name: s.name,
+        lat: s.location?.latitude,
+        lng: s.location?.longitude,
+        value: byId[s.id || s.deviceId],
+      }))
+      .filter(s => s.value != null && s.lat != null);
+  }
+
+  // ----- v1 legacy format -----
+  // metadata.stations[] / items[0].readings[]
   const stations = apiResponse?.metadata?.stations || [];
   const readings = apiResponse?.items?.[0]?.readings || [];
   const byId = {};
@@ -4862,6 +5072,10 @@ function renderSGMap() {
       : `◌ MOCK · ${layerLbl}${countSuffix}`;
   }
 
+  // Refresh the per-layer "last updated" badge whenever the map redraws —
+  // catches both layer changes and successful auto-refreshes.
+  if (typeof updateLayerLastRefreshUI === 'function') updateLayerLastRefreshUI();
+
   renderSGMapLegend();
 }
 
@@ -4979,7 +5193,7 @@ function renderSGMapLegend() {
             <div class="row"><div class="pip" style="background:#f1c40f"></div> 31.0-31.9°C Caution</div>
             <div class="row"><div class="pip" style="background:#e74c3c"></div> 32.0-32.9°C Danger</div>
             <div class="row"><div class="pip" style="background:#000000;border:1px solid #fff"></div> 33.0-34.9°C Extreme</div>
-            <div class="row"><div class="pip" style="background:#ffffff;border:1px solid #555"></div> ≥35.0°C Off-scale</div>`;
+            <div class="row"><div class="pip" style="background:#bfc7d2;border:1px solid #555"></div> ≥35.0°C Off-scale</div>`;
   } else if (sgActiveLayer === 'rain') {
     rows = `<div class="row"><div class="pip" style="background:#4fd1c5"></div> 0 mm Dry</div>
             <div class="row"><div class="pip" style="background:#5ed67b"></div> &lt;2.5 Light</div>
@@ -6124,12 +6338,125 @@ async function initMap() {
 // ============================================================
 //  TABLE
 // ============================================================
+// ============================================================
+//  TABLE — sort + search state
+// ============================================================
+let tableSortKey = 'updated';
+let tableSortDir = 'desc'; // 'asc' or 'desc'
+let tableSearchQuery = '';
+
+function handleTableSearch(q) {
+  tableSearchQuery = (q || '').trim().toLowerCase();
+  renderTable();
+}
+function clearTableSearch() {
+  tableSearchQuery = '';
+  const el = document.getElementById('table-search-input');
+  if (el) el.value = '';
+  renderTable();
+}
+function sortTableBy(key) {
+  // Click same column → flip direction. Click new column → default direction.
+  if (tableSortKey === key) {
+    tableSortDir = tableSortDir === 'asc' ? 'desc' : 'asc';
+  } else {
+    tableSortKey = key;
+    // Severity defaults to ascending (Critical first since it sorts low),
+    // Date defaults to descending (newest first), everything else ascending
+    tableSortDir = (key === 'updated') ? 'desc' : (key === 'severity' ? 'asc' : 'asc');
+  }
+  renderTable();
+}
+
+function compareTableRows(a, b, key) {
+  // Inner comparator — only handles the "real" data comparison.
+  // Nominal-grouping happens OUTSIDE this so direction-flip can't invert it.
+  let av, bv;
+  switch (key) {
+    case 'severity':
+      av = SEV_ORDER[a.severity] ?? 99;
+      bv = SEV_ORDER[b.severity] ?? 99;
+      break;
+    case 'updated':
+      av = a.updated ? new Date(a.updated).getTime() : 0;
+      bv = b.updated ? new Date(b.updated).getTime() : 0;
+      break;
+    case 'threshold':
+      // EXCEEDED > APPROACHING > BELOW > —
+      const tOrder = { 'EXCEEDED': 0, 'APPROACHING': 1, 'BELOW': 2, '—': 3 };
+      av = tOrder[a.threshold] ?? 9;
+      bv = tOrder[b.threshold] ?? 9;
+      break;
+    case 'name':    av = (a.name || '').toLowerCase();  bv = (b.name || '').toLowerCase();  break;
+    case 'event':   av = (a.event || '').toLowerCase(); bv = (b.event || '').toLowerCase(); break;
+    case 'source':  av = (a.source || '').toLowerCase();bv = (b.source || '').toLowerCase();break;
+    default:        av = a[key] || ''; bv = b[key] || '';
+  }
+  if (av < bv) return -1;
+  if (av > bv) return  1;
+  return 0;
+}
+
+function rowMatchesSearch(d, q) {
+  if (!q) return true;
+  const haystack = [
+    d.name, d.code, d.event, d.subtype, d.threshold, d.source,
+    SEV_LABEL[d.severity], HAZ_LABEL[d.hazard],
+    d.desc, (d.actions || []).join(' '),
+  ].filter(Boolean).join(' ').toLowerCase();
+  return haystack.includes(q);
+}
+
+function updateSortHeaderUI() {
+  document.querySelectorAll('table.data thead th.sortable').forEach(th => {
+    const k = th.dataset.sortKey;
+    const ind = th.querySelector('.sort-ind');
+    th.classList.remove('active','asc','desc');
+    if (k === tableSortKey) {
+      th.classList.add('active', tableSortDir);
+      if (ind) ind.textContent = tableSortDir === 'asc' ? '▲' : '▼';
+    } else {
+      if (ind) ind.textContent = '';
+    }
+  });
+}
+
 function renderTable() {
   const tbody = document.getElementById('tbody');
+  if (!tbody) return;
   tbody.innerHTML = '';
-  const sorted = [...DATA].sort((a,b) => SEV_ORDER[a.severity] - SEV_ORDER[b.severity]);
-  sorted.forEach(d => {
-    if (!d.nominal && !activeFilters.has(d.hazard)) return;
+
+  // Filter: hazard filters + search
+  let rows = DATA.filter(d => d.nominal || activeFilters.has(d.hazard));
+  if (tableSearchQuery) rows = rows.filter(d => rowMatchesSearch(d, tableSearchQuery));
+
+  // Sort. Nominal rows are always at the bottom regardless of sort direction —
+  // we apply the nominal-grouping AFTER the direction flip so it doesn't get
+  // inverted when the user picks descending order.
+  rows = rows.sort((a, b) => {
+    // Nominal-grouping pass: non-nominal rows always come first
+    if (a.nominal && !b.nominal) return 1;
+    if (!a.nominal && b.nominal) return -1;
+    if (a.nominal && b.nominal) return (a.name || '').localeCompare(b.name || '');
+    // Both are real incidents — apply the user's chosen sort
+    const cmp = compareTableRows(a, b, tableSortKey);
+    return tableSortDir === 'desc' ? -cmp : cmp;
+  });
+
+  // Update header indicator UI
+  updateSortHeaderUI();
+
+  // Update result counter
+  const resEl = document.getElementById('table-search-results');
+  if (resEl) {
+    if (tableSearchQuery) {
+      resEl.innerHTML = `<b>${rows.length}</b> result${rows.length === 1 ? '' : 's'} for "${tableSearchQuery.replace(/[<>]/g,'')}"`;
+    } else {
+      resEl.textContent = '';
+    }
+  }
+
+  rows.forEach(d => {
     const row = document.createElement('tr');
     row.onclick = () => jumpToCard(`${d.code}-${d.hazard || 'ok'}`);
     row.innerHTML = d.nominal
@@ -6160,7 +6487,14 @@ function renderTable() {
 function renderCards() {
   const wrap = document.getElementById('cards');
   wrap.innerHTML = '';
-  const sorted = [...activeAlerts].sort((a,b) => SEV_ORDER[a.severity] - SEV_ORDER[b.severity]);
+  // Default sort: most recent incident first. Falls back to severity for events
+  // with the same timestamp.
+  const sorted = [...activeAlerts].sort((a, b) => {
+    const ta = a.updated ? new Date(a.updated).getTime() : 0;
+    const tb = b.updated ? new Date(b.updated).getTime() : 0;
+    if (tb !== ta) return tb - ta; // newest first
+    return (SEV_ORDER[a.severity] ?? 99) - (SEV_ORDER[b.severity] ?? 99);
+  });
   sorted.forEach(d => {
     if (!activeFilters.has(d.hazard)) return;
     const card = document.createElement('div');
@@ -7310,13 +7644,345 @@ function renderPersonnelBreadcrumb() {
   el.innerHTML = html;
 }
 
+// ============================================================
+//  HAZARD "LAST UPDATED" TIMESTAMP
+//  Updates the badge next to the ⟳ AUTO indicator each time hazard
+//  data is fetched, and ticks the relative-time display every 15s
+//  so it stays current even between refreshes.
+// ============================================================
+let lastHazardRefreshTime = null;
+
+function updateHazardLastRefreshed(timestamp) {
+  if (timestamp) lastHazardRefreshTime = timestamp;
+  const timeEl = document.getElementById('hazard-lr-time');
+  const agoEl  = document.getElementById('hazard-lr-ago');
+  const wrap   = document.getElementById('hazard-last-refresh');
+  if (!timeEl || !agoEl || !wrap) return;
+
+  if (!lastHazardRefreshTime) {
+    timeEl.textContent = '—';
+    agoEl.textContent = '';
+    wrap.classList.remove('stale','very-stale');
+    return;
+  }
+
+  const ts = new Date(lastHazardRefreshTime);
+  // Format: "Mon 27 Apr, 14:32 SGT"
+  const formatted = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Singapore',
+    weekday: 'short',
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(ts);
+  timeEl.textContent = formatted + ' SGT';
+
+  // Relative "X ago"
+  const ageSec = Math.max(0, Math.floor((Date.now() - ts.getTime()) / 1000));
+  let ago;
+  if (ageSec < 60)         ago = ageSec + 's ago';
+  else if (ageSec < 3600)  ago = Math.floor(ageSec / 60) + 'm ago';
+  else if (ageSec < 86400) ago = Math.floor(ageSec / 3600) + 'h ago';
+  else                     ago = Math.floor(ageSec / 86400) + 'd ago';
+  agoEl.textContent = '· ' + ago;
+
+  // Staleness colouring — auto-refresh is every 15 min, so:
+  //   <20 min: fresh (default colour)
+  //   20-45 min: stale (orange)
+  //   >45 min: very stale (red)
+  wrap.classList.remove('stale','very-stale');
+  if (ageSec > 45 * 60)      wrap.classList.add('very-stale');
+  else if (ageSec > 20 * 60) wrap.classList.add('stale');
+}
+
+// Tick the relative-time display every 15s
+setInterval(updateHazardLastRefreshed, 15 * 1000);
+
+// ============================================================
+//  AUTO-REFRESH SCHEDULER
+//  - Disasters/hazards (USGS, GDACS, OpenAQ): every 15 minutes
+//  - SG environmental (PSI, PM2.5, weather, wind): every 1 hour
+//  Both can be paused via document visibility (don't burn cycles
+//  when the tab is in the background) and resume on re-focus.
+// ============================================================
+
+// ============================================================
+//  PER-LAYER LAST-REFRESH INDICATOR (SG map)
+//  Each interactive map layer shows when ITS underlying data was
+//  last successfully refreshed. The user can tell at a glance
+//  whether they're looking at fresh or stale numbers per layer.
+// ============================================================
+function updateLayerLastRefreshUI() {
+  const wrap = document.getElementById('sg-map-layer-refresh');
+  const timeEl = document.getElementById('sg-map-layer-refresh-time');
+  if (!wrap || !timeEl) return;
+
+  const ts = layerLastRefresh[sgActiveLayer];
+  if (!ts) {
+    timeEl.textContent = '—';
+    wrap.classList.remove('stale', 'very-stale');
+    return;
+  }
+
+  const ts_ms = new Date(ts).getTime();
+  const ageSec = Math.max(0, Math.floor((Date.now() - ts_ms) / 1000));
+
+  // Format as "HH:MM SGT · Xm ago"
+  const hhmm = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Singapore',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(new Date(ts));
+
+  let ago;
+  if (ageSec < 60)         ago = ageSec + 's ago';
+  else if (ageSec < 3600)  ago = Math.floor(ageSec / 60) + 'm ago';
+  else if (ageSec < 86400) ago = Math.floor(ageSec / 3600) + 'h ago';
+  else                     ago = Math.floor(ageSec / 86400) + 'd ago';
+  timeEl.textContent = `${hhmm} SGT · ${ago}`;
+
+  // Staleness: refresh interval depends on the layer
+  // Temp & rain auto-refresh every 5 min, PSI & PM2.5 every 1 hour
+  let staleThreshold, veryStaleThreshold;
+  if (sgActiveLayer === 'temp' || sgActiveLayer === 'rain') {
+    staleThreshold = 7 * 60;       // 7 min
+    veryStaleThreshold = 15 * 60;  // 15 min
+  } else {
+    // psi / pm25 (hourly)
+    staleThreshold = 75 * 60;      // 75 min
+    veryStaleThreshold = 130 * 60; // 2 hr 10 min
+  }
+  wrap.classList.remove('stale', 'very-stale');
+  if (ageSec > veryStaleThreshold) wrap.classList.add('very-stale');
+  else if (ageSec > staleThreshold) wrap.classList.add('stale');
+}
+
+// Tick the relative time on the layer-refresh indicator every 30s
+setInterval(() => {
+  if (document.getElementById('sg-view')?.classList.contains('active')) {
+    updateLayerLastRefreshUI();
+  }
+}, 30 * 1000);
+
+const AUTO_REFRESH_HAZARD_MS = 15 * 60 * 1000; //  15 minutes
+const AUTO_REFRESH_SG_MS     = 60 * 60 * 1000; //  1 hour
+const AUTO_REFRESH_TEMP_MS   =  5 * 60 * 1000; //  5 minutes — temperature only
+const AUTO_REFRESH_RAIN_MS   =  5 * 60 * 1000; //  5 minutes — rainfall only
+
+let autoRefreshHazardTimer = null;
+let autoRefreshSGTimer = null;
+let autoRefreshTempTimer = null;
+let autoRefreshRainTimer = null;
+let lastHazardAutoRefresh = 0;
+let lastSGAutoRefresh = 0;
+let lastTempAutoRefresh = 0;
+let lastRainAutoRefresh = 0;
+
+// Per-layer "last successful refresh" timestamps so the SG map can show a
+// distinct freshness indicator depending on which layer is active.
+let layerLastRefresh = { psi: null, pm25: null, temp: null, rain: null };
+
+// Refresh just the global hazard sources (USGS / GDACS / OpenAQ) — no SG re-fetch.
+// Quieter than the full refresh: no toast, no banner spinner unless something fails.
+async function refreshHazardDataOnly() {
+  try {
+    Object.keys(dataSourceStatus).forEach(k => {
+      if (k !== 'sg') dataSourceStatus[k] = { ...dataSourceStatus[k], status: 'pending' };
+    });
+    setSourceStatusUI(true);
+
+    const [usgs, gdacs, aq] = await Promise.all([
+      fetchUSGS().catch(e => { console.warn('[auto-refresh] USGS failed', e); return []; }),
+      fetchGDACS().catch(e => { console.warn('[auto-refresh] GDACS failed', e); return []; }),
+      fetchAirQuality().catch(e => { console.warn('[auto-refresh] OpenAQ failed', e); return []; }),
+    ]);
+
+    liveAlerts = [...usgs, ...gdacs, ...aq];
+    rebuildDATA();
+    updateStats();
+    renderAll();
+    update24hButton();
+    personnelAlertsDismissed = false;
+    if (typeof renderPersonnelAlertBanner === 'function') renderPersonnelAlertBanner();
+
+    setSourceStatusUI(false);
+    lastHazardAutoRefresh = Date.now();
+    updateHazardLastRefreshed(new Date().toISOString());
+    console.log(`[auto-refresh] Hazard data refreshed at ${new Date().toLocaleTimeString('en-GB')}`);
+  } catch (e) {
+    console.error('[auto-refresh] Hazard refresh failed:', e);
+  }
+}
+
+// Refresh only Singapore data — NEA PSI, PM2.5, weather, wind
+async function refreshSGDataOnly() {
+  try {
+    if (typeof fetchSingaporeData === 'function') {
+      await fetchSingaporeData();
+    }
+    if (typeof fetchSGWeatherData === 'function') {
+      await fetchSGWeatherData();
+    }
+    if (typeof renderSGMap === 'function')        renderSGMap();
+    if (typeof renderSingaporeView === 'function') renderSingaporeView();
+    if (typeof updateSGLastUpdated === 'function') updateSGLastUpdated();
+    // The full SG refresh covers every layer
+    const nowIso = new Date().toISOString();
+    layerLastRefresh.psi  = nowIso;
+    layerLastRefresh.pm25 = nowIso;
+    layerLastRefresh.temp = nowIso;
+    layerLastRefresh.rain = nowIso;
+    if (typeof updateLayerLastRefreshUI === 'function') updateLayerLastRefreshUI();
+    lastSGAutoRefresh = Date.now();
+    console.log(`[auto-refresh] SG data refreshed at ${new Date().toLocaleTimeString('en-GB')}`);
+  } catch (e) {
+    console.error('[auto-refresh] SG refresh failed:', e);
+  }
+}
+
+// Lightweight: re-fetch only the air-temperature endpoint and update the map
+// markers in place. This is intentionally narrower than refreshSGDataOnly()
+// — temperature changes minute-to-minute and we want fresh markers without
+// re-pulling rain/wind/PSI every 5 min.
+async function refreshTempStationsOnly() {
+  try {
+    const tempResponse = await fetchOneSGEndpoint('air-temperature');
+    if (!tempResponse) {
+      console.warn('[auto-refresh] Temperature fetch failed — skipping tick');
+      return;
+    }
+    const stations = parseSGStations(tempResponse);
+    if (!stations.length) {
+      console.warn('[auto-refresh] Temperature response had 0 stations — skipping tick');
+      return;
+    }
+    if (!sgWeatherData) sgWeatherData = { live: true };
+    sgWeatherData.temp = stations;
+    sgWeatherData.live = true;
+
+    layerLastRefresh.temp = new Date().toISOString();
+
+    // Only redraw the SG map if the Temperature layer is currently being shown
+    // (no point repainting if the user is on PSI or another tab).
+    if (sgActiveLayer === 'temp' &&
+        document.getElementById('sg-view')?.classList.contains('active') &&
+        typeof renderSGMap === 'function') {
+      renderSGMap();
+    }
+    if (typeof updateLayerLastRefreshUI === 'function') updateLayerLastRefreshUI();
+    lastTempAutoRefresh = Date.now();
+    console.log(`[auto-refresh] Temperature: ${stations.length} stations updated at ${new Date().toLocaleTimeString('en-GB')}`);
+  } catch (e) {
+    console.error('[auto-refresh] Temperature refresh failed:', e);
+  }
+}
+
+// Rainfall stations are NEA's fastest-moving stream — they publish every ~5
+// minutes (5-minute cumulative totals at each rain gauge). This refresh hits
+// only the rainfall endpoint and updates the map in place.
+async function refreshRainStationsOnly() {
+  try {
+    const rainResponse = await fetchOneSGEndpoint('rainfall');
+    if (!rainResponse) {
+      console.warn('[auto-refresh] Rainfall fetch failed — skipping tick');
+      return;
+    }
+    const stations = parseSGStations(rainResponse);
+    // Rainfall can legitimately be 0 at every station on a dry day, so we
+    // can't reject "0 stations with values" the same way temperature does —
+    // if metadata is present but all values are null, that means clear weather.
+    if (!sgWeatherData) sgWeatherData = { live: true };
+    sgWeatherData.rain = stations;
+    sgWeatherData.live = true;
+
+    layerLastRefresh.rain = new Date().toISOString();
+
+    if (sgActiveLayer === 'rain' &&
+        document.getElementById('sg-view')?.classList.contains('active') &&
+        typeof renderSGMap === 'function') {
+      renderSGMap();
+    }
+    if (typeof updateLayerLastRefreshUI === 'function') updateLayerLastRefreshUI();
+    lastRainAutoRefresh = Date.now();
+    console.log(`[auto-refresh] Rainfall: ${stations.length} stations updated at ${new Date().toLocaleTimeString('en-GB')}`);
+  } catch (e) {
+    console.error('[auto-refresh] Rainfall refresh failed:', e);
+  }
+}
+
+function startAutoRefreshTimers() {
+  // Clear any existing timers (in case this runs more than once)
+  if (autoRefreshHazardTimer) clearInterval(autoRefreshHazardTimer);
+  if (autoRefreshSGTimer)     clearInterval(autoRefreshSGTimer);
+
+  autoRefreshHazardTimer = setInterval(() => {
+    if (document.hidden) return; // skip while tab is backgrounded
+    refreshHazardDataOnly();
+  }, AUTO_REFRESH_HAZARD_MS);
+
+  autoRefreshSGTimer = setInterval(() => {
+    if (document.hidden) return;
+    refreshSGDataOnly();
+  }, AUTO_REFRESH_SG_MS);
+
+  // Temperature stations refresh — every 5 minutes, lightweight
+  if (autoRefreshTempTimer) clearInterval(autoRefreshTempTimer);
+  autoRefreshTempTimer = setInterval(() => {
+    if (document.hidden) return;
+    refreshTempStationsOnly();
+  }, AUTO_REFRESH_TEMP_MS);
+
+  // Rainfall stations refresh — every 5 minutes (NEA publishes every 5 min)
+  if (autoRefreshRainTimer) clearInterval(autoRefreshRainTimer);
+  autoRefreshRainTimer = setInterval(() => {
+    if (document.hidden) return;
+    refreshRainStationsOnly();
+  }, AUTO_REFRESH_RAIN_MS);
+
+  // When the tab regains focus after being hidden, run any refresh that's
+  // overdue. This catches the case where someone leaves the dashboard up
+  // overnight and comes back to a stale screen.
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) return;
+    const now = Date.now();
+    if (now - lastHazardAutoRefresh > AUTO_REFRESH_HAZARD_MS) {
+      console.log('[auto-refresh] Hazard refresh overdue on tab focus — running now');
+      refreshHazardDataOnly();
+    }
+    if (now - lastSGAutoRefresh > AUTO_REFRESH_SG_MS) {
+      console.log('[auto-refresh] SG refresh overdue on tab focus — running now');
+      refreshSGDataOnly();
+    }
+    if (now - lastTempAutoRefresh > AUTO_REFRESH_TEMP_MS) {
+      console.log('[auto-refresh] Temperature refresh overdue on tab focus — running now');
+      refreshTempStationsOnly();
+    }
+    if (now - lastRainAutoRefresh > AUTO_REFRESH_RAIN_MS) {
+      console.log('[auto-refresh] Rainfall refresh overdue on tab focus — running now');
+      refreshRainStationsOnly();
+    }
+  });
+
+  console.log(`[auto-refresh] Scheduled — hazards every ${AUTO_REFRESH_HAZARD_MS/60000}min, SG full every ${AUTO_REFRESH_SG_MS/60000}min, temperature every ${AUTO_REFRESH_TEMP_MS/60000}min, rainfall every ${AUTO_REFRESH_RAIN_MS/60000}min`);
+}
+
 async function bootApp() {
   initMap();
   renderAll();
   setSourceStatusUI(false);
   wireCommandBar();
   update24hButton();
-  refreshAllLiveData();
+  await refreshAllLiveData();
+  // After the first manual fetch, mark both timers as 'just refreshed' so they
+  // don't immediately trigger again, and start the recurring auto-refresh schedule.
+  lastHazardAutoRefresh = Date.now();
+  lastSGAutoRefresh = Date.now();
+  lastTempAutoRefresh = Date.now();
+  lastRainAutoRefresh = Date.now();
+  startAutoRefreshTimers();
   // Check for personnel × incident cross-refs after boot
   setTimeout(renderPersonnelAlertBanner, 1500);
 }
