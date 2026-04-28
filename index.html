@@ -4093,13 +4093,17 @@ function psiBand(v) {
   return                { name: 'Hazardous',     sev: 'crit',  color: '#ff4d4d' };
 }
 
+// PM2.5 bands per the official 4-band matrix:
+//   0-55     Band 1  Normal
+//   56-150   Band 2  Elevated
+//   151-250  Band 3  High
+//   ≥251     Band 4  Very High
 function pm25Band(v) {
-  if (v == null) return { name: '—', sev: 'info', color: '#5a6b7e' };
-  if (v <= 12)  return { name: 'Good',     sev: 'ok',    color: '#5ed67b' };
-  if (v <= 35)  return { name: 'Moderate', sev: 'info',  color: '#4fd1c5' };
-  if (v <= 55)  return { name: 'Sensitive', sev: 'watch', color: '#ffd83d' };
-  if (v <= 150) return { name: 'Unhealthy', sev: 'warn', color: '#ffa336' };
-  return                { name: 'Hazardous', sev: 'crit', color: '#ff4d4d' };
+  if (v == null) return { name: '—',         sev: 'info',  color: '#5a6b7e', band: 0 };
+  if (v <= 55)   return { name: 'Normal',    sev: 'ok',    color: '#5ed67b', band: 1 };
+  if (v <= 150)  return { name: 'Elevated',  sev: 'watch', color: '#ffd83d', band: 2 };
+  if (v <= 250)  return { name: 'High',      sev: 'warn',  color: '#ffa336', band: 3 };
+  return                { name: 'Very High', sev: 'crit',  color: '#ff4d4d', band: 4 };
 }
 
 // Temperature bands for SG / SAF context
@@ -4332,11 +4336,11 @@ async function setSGRange(range, btnEl) {
       ]
     });
     renderTrendChart('sg-chart-pm', pmPoints, {
-      color:'#ffa336', minMax:35, bandFn:pm25Band, timeFmt:'hour',
+      color:'#ffa336', minMax:100, bandFn:pm25Band, timeFmt:'hour',
       thresholds:[
-        { value:12, color:'#5ed67b', label:'WHO annual' },
-        { value:15, color:'#4fd1c5', label:'WHO 24h'    },
-        { value:35, color:'#ffa336', label:'Mod limit'  },
+        { value:55,  color:'#5ed67b', label:'Normal limit'   },
+        { value:150, color:'#ffd83d', label:'Elevated limit' },
+        { value:250, color:'#ffa336', label:'High limit'     },
       ]
     });
     renderTrendChart('sg-chart-temp', tempPoints, {
@@ -4377,11 +4381,11 @@ async function setSGRange(range, btnEl) {
     ]
   });
   renderTrendChart('sg-chart-pm', pmPoints, {
-    color:'#ffa336', minMax:35, bandFn:pm25Band, timeFmt,
+    color:'#ffa336', minMax:100, bandFn:pm25Band, timeFmt,
     thresholds:[
-      { value:12, color:'#5ed67b', label:'WHO annual' },
-      { value:15, color:'#4fd1c5', label:'WHO 24h'    },
-      { value:35, color:'#ffa336', label:'Mod limit'  },
+      { value:55,  color:'#5ed67b', label:'Normal limit'   },
+      { value:150, color:'#ffd83d', label:'Elevated limit' },
+      { value:250, color:'#ffa336', label:'High limit'     },
     ]
   });
   renderTrendChart('sg-chart-temp', tempPoints, {
@@ -4577,11 +4581,11 @@ function renderSingaporeView() {
     .map(d => ({ timestamp: d.timestamp, value: nationalOf(d.readings?.pm25_one_hourly) }))
     .filter(p => p.value != null);
   renderTrendChart('sg-chart-pm', pmPoints, {
-    color: '#ffa336', minMax: 35, bandFn: pm25Band,
+    color: '#ffa336', minMax: 100, bandFn: pm25Band,
     thresholds: [
-      { value: 12, color: '#5ed67b', label: 'WHO annual' },
-      { value: 15, color: '#4fd1c5', label: 'WHO 24h' },
-      { value: 35, color: '#ffa336', label: 'Mod limit' },
+      { value: 55,  color: '#5ed67b', label: 'Normal limit'   },
+      { value: 150, color: '#ffd83d', label: 'Elevated limit' },
+      { value: 250, color: '#ffa336', label: 'High limit'     },
     ]
   });
   // Temperature trend chart (24H default)
@@ -4612,10 +4616,10 @@ function renderSingaporeView() {
     : psiVal > 50  ? { sev:'ok',   txt:'PSI in MODERATE band — within healthy range' }
     :                { sev:'ok',   txt:'PSI in GOOD band — no action required' };
   const pmThresh = pmVal == null ? null
-    : pmVal > 55  ? { sev:'crit', txt:'PM2.5 above 24h threshold — protective advisory required' }
-    : pmVal > 35  ? { sev:'warn', txt:'PM2.5 elevated — monitor sensitive personnel' }
-    : pmVal > 15  ? { sev:'warn', txt:'PM2.5 above WHO 24h guideline (15 µg/m³)' }
-    :                { sev:'ok',   txt:'PM2.5 within WHO 24h guideline' };
+    : pmVal >= 251 ? { sev:'crit',  txt:'PM2.5 VERY HIGH (Band 4) — minimise outdoor activity, mandatory protective measures' }
+    : pmVal >= 151 ? { sev:'warn',  txt:'PM2.5 HIGH (Band 3) — limit prolonged outdoor exertion, brief on respiratory risks' }
+    : pmVal >=  56 ? { sev:'watch', txt:'PM2.5 ELEVATED (Band 2) — monitor sensitive personnel' }
+    :                { sev:'ok',    txt:'PM2.5 NORMAL (Band 1) — no special action required' };
   const tempThresh = tempVal == null ? null
     : tempVal >= 38 ? { sev:'crit', txt:'EXTREME HEAT — suspend non-essential outdoor activity, mandatory cooling/hydration' }
     : tempVal >= 36 ? { sev:'warn', txt:'Heat advisory — modify outdoor training, frequent water breaks, watch for heat injury' }
@@ -5182,11 +5186,10 @@ function renderSGMapLegend() {
             <div class="row"><div class="pip" style="background:#ff4d4d"></div> 201-300 Very Unh.</div>
             <div class="row"><div class="pip" style="background:#ff4d4d"></div> 300+ Hazardous</div>`;
   } else if (sgActiveLayer === 'pm25') {
-    rows = `<div class="row"><div class="pip" style="background:#5ed67b"></div> 0-12 Good</div>
-            <div class="row"><div class="pip" style="background:#4fd1c5"></div> 13-35 Moderate</div>
-            <div class="row"><div class="pip" style="background:#ffd83d"></div> 36-55 Sensitive</div>
-            <div class="row"><div class="pip" style="background:#ffa336"></div> 56-150 Unhealthy</div>
-            <div class="row"><div class="pip" style="background:#ff4d4d"></div> 150+ Hazardous</div>`;
+    rows = `<div class="row"><div class="pip" style="background:#5ed67b"></div> 0-55 Normal (Band 1)</div>
+            <div class="row"><div class="pip" style="background:#ffd83d"></div> 56-150 Elevated (Band 2)</div>
+            <div class="row"><div class="pip" style="background:#ffa336"></div> 151-250 High (Band 3)</div>
+            <div class="row"><div class="pip" style="background:#ff4d4d"></div> ≥251 Very High (Band 4)</div>`;
   } else if (sgActiveLayer === 'temp') {
     rows = `<div class="row"><div class="pip" style="background:#ffffff;border:1px solid #555"></div> ≤29.9°C Low</div>
             <div class="row"><div class="pip" style="background:#2ecc71"></div> 30.0-30.9°C Elevated</div>
@@ -6833,13 +6836,13 @@ function renderAQChart(canvasId, statsId, series, isLive) {
   const vals = series.map(d => d.pm25);
   const avg = vals.reduce((a,b) => a+b, 0) / vals.length;
   const max = Math.max(...vals);
-  const exceedances = vals.filter(v => v > 35).length;
+  const exceedances = vals.filter(v => v > 55).length;
   const exceedPct = (exceedances / vals.length * 100).toFixed(0);
   document.getElementById(statsId).innerHTML = `
     <span>Avg: <b>${avg.toFixed(1)}</b> µg/m³</span>
     <span>Peak: <b>${max.toFixed(1)}</b> µg/m³</span>
-    <span>Time above 35 µg/m³: <b>${exceedPct}%</b></span>
-    <span>WHO 24h guideline: <b>15</b> µg/m³</span>
+    <span>Time above 55 µg/m³ (Band 2+): <b>${exceedPct}%</b></span>
+    <span>Normal limit (Band 1): <b>≤55</b> µg/m³</span>
     <span class="src-tag ${isLive ? 'live' : 'mock'}">${isLive ? '◉ LIVE · OPEN-METEO' : '◌ MOCK PATTERN'}</span>
   `;
 }
