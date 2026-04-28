@@ -2220,6 +2220,16 @@
     border-radius: 2px;
     flex-shrink: 0;
   }
+  .sg-map-legend .legend-subhead {
+    color: var(--accent);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 4px 0 6px 0;
+    margin-bottom: 2px;
+    border-bottom: 1px solid var(--line);
+  }
 
   .sg-map-status {
     position: absolute;
@@ -2311,16 +2321,17 @@
   }
   .leaflet-control-attribution a { color: var(--accent) !important; }
   .sg-region-label {
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
+    background: rgba(11, 15, 20, 0.92) !important;
+    border: 1px solid rgba(255, 255, 255, 0.25) !important;
+    border-radius: 4px !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.55) !important;
     color: #fff !important;
     font-family: 'JetBrains Mono', monospace !important;
-    font-size: 10px !important;
-    font-weight: 600 !important;
-    letter-spacing: 0.05em !important;
-    text-shadow: 0 0 4px rgba(0,0,0,0.9), 0 1px 2px rgba(0,0,0,0.8) !important;
-    padding: 0 !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.06em !important;
+    padding: 3px 8px !important;
+    white-space: nowrap !important;
   }
   .sg-region-label::before { display: none !important; }
   .sg-section-title {
@@ -2860,14 +2871,12 @@
 </head>
 <body>
 
-<div class="class-bar">⬛ UNCLASSIFIED // PROTOTYPE // NOT FOR OPERATIONAL USE ⬛</div>
-
 <header class="app">
   <div class="brand">
     <div class="logo">HADR</div>
     <div>
-      <h1>Environmental Monitoring &amp; HADR Advisory</h1>
-      <div class="sub">Staff-Assist Prototype · Country-level personnel data only</div>
+      <h1>Global Environmental Monitoring &amp; HADR Advisory Dashboard</h1>
+      <div class="sub">Country-level personnel data</div>
     </div>
   </div>
   <div class="clock">
@@ -2910,13 +2919,11 @@
         <div class="gate-icon">🔒</div>
         <div class="gate-title">Restricted Access</div>
         <div class="gate-sub">This view contains personnel disposition data<br>and requires authentication.</div>
-        <div class="gate-classif">⬛ UNCLASSIFIED // PROTOTYPE — NOT A REAL AUTH GATE ⬛</div>
         <form id="gate-form" onsubmit="return attemptUnlock(event)">
           <input type="password" id="gate-password" placeholder="Enter access code" autocomplete="off" />
           <button type="submit">➤ Authenticate</button>
         </form>
         <div id="gate-error" class="gate-error"></div>
-        <div class="gate-hint">Default access code: <code>gsoc</code><br><span style="opacity:0.6">(For demo purposes — shown here because this is not real security)</span></div>
       </div>
     </div>
 
@@ -2925,7 +2932,6 @@
         <div>
           <div class="personnel-title">⬢ Personnel Disposition — Country / Region Browser</div>
           <div class="personnel-sub">Select a country or region to view sub-units. Click <b>🔒 Lock</b> to re-secure this view.</div>
-          <div class="personnel-classif">⬛ UNCLASSIFIED // PROTOTYPE // MOCK DATA — NO REAL PERSONNEL ⬛</div>
           <div class="personnel-summary" id="personnel-summary">No personnel locations confirmed.</div>
         </div>
         <button class="personnel-lock-btn" onclick="lockPersonnelTab()">🔒 Lock</button>
@@ -3176,7 +3182,6 @@
 
 <footer>
   <div>Sources: USGS Earthquake Hazards Program · GDACS (EU JRC + UN OCHA) · Open-Meteo CAMS Air Quality · OpenStreetMap / Natural Earth</div>
-  <div>v0.1 · All outputs are staff-assist · Officer review required</div>
 </footer>
 
 <!-- Chat popup - floating assistant -->
@@ -4110,20 +4115,20 @@ function pm25Band(v) {
 // NEA heat advisory bands + heat-injury risk for outdoor activity
 // Heat-stress colour bands (SAF-style WBGT-inspired chart).
 // Provided by the dashboard user; keep in sync with the Temperature legend.
-// ≤29.9  White — low risk
-// 30.0–30.9 Green — elevated
-// 31.0–31.9 Yellow — caution
-// 32.0–32.9 Red — danger
-// 33.0–34.9 Black — extreme (work-rest enforced)
-// ≥35.0   Light grey — off-scale (gear off / training cease)
+// ≤29.9  White — low risk         (Work:Rest 60:15)
+// 30.0–30.9 Green — elevated      (Work:Rest 45:15)
+// 31.0–31.9 Yellow — caution      (Work:Rest 30:15)
+// 32.0–32.9 Red — danger          (Work:Rest 30:30)
+// 33.0–34.9 Black — extreme       (Work:Rest 15:30)
+// ≥35.0   Light grey — off-scale  (No strenuous training)
 function tempBand(v) {
-  if (v == null) return { name: '—', sev: 'info', color: '#5a6b7e', textColor: '#e6edf3' };
-  if (v < 30)  return { name: 'Low',          sev: 'info',  color: '#ffffff', textColor: '#000000' };
-  if (v < 31)  return { name: 'Elevated',     sev: 'info',  color: '#2ecc71', textColor: '#000000' };
-  if (v < 32)  return { name: 'Caution',      sev: 'watch', color: '#f1c40f', textColor: '#000000' };
-  if (v < 33)  return { name: 'Danger',       sev: 'warn',  color: '#e74c3c', textColor: '#ffffff' };
-  if (v < 35)  return { name: 'Extreme',      sev: 'crit',  color: '#000000', textColor: '#ffffff' };
-  return               { name: 'Off-scale',   sev: 'crit',  color: '#bfc7d2', textColor: '#000000' };
+  if (v == null) return { name: '—', sev: 'info', color: '#5a6b7e', textColor: '#e6edf3', workRest: '—' };
+  if (v < 30)  return { name: 'Low',          sev: 'info',  color: '#ffffff', textColor: '#000000', workRest: '60:15' };
+  if (v < 31)  return { name: 'Elevated',     sev: 'info',  color: '#2ecc71', textColor: '#000000', workRest: '45:15' };
+  if (v < 32)  return { name: 'Caution',      sev: 'watch', color: '#f1c40f', textColor: '#000000', workRest: '30:15' };
+  if (v < 33)  return { name: 'Danger',       sev: 'warn',  color: '#e74c3c', textColor: '#ffffff', workRest: '30:30' };
+  if (v < 35)  return { name: 'Extreme',      sev: 'crit',  color: '#000000', textColor: '#ffffff', workRest: '15:30' };
+  return               { name: 'Off-scale',   sev: 'crit',  color: '#bfc7d2', textColor: '#000000', workRest: 'No strenuous training' };
 }
 
 function generateMockSGData() {
@@ -5126,7 +5131,12 @@ function renderRegionalLayer(layer) {
       fillColor: band.color,
       fillOpacity: 0.9,
     }).addTo(sgMapLayers.markers)
-      .bindTooltip(`${r.toUpperCase()}: ${v != null ? v : '—'}`, { permanent: true, direction: 'center', className: 'sg-region-label' })
+      .bindTooltip(`${r.toUpperCase()}: ${v != null ? v : '—'}`, {
+        permanent: true,
+        direction: 'top',
+        offset: [0, -16],
+        className: 'sg-region-label',
+      })
       .bindPopup(`<div class="pt">${r.toUpperCase()}</div>
                   <div class="pv" style="color:${band.color}">${v != null ? v : '—'}${units}</div>
                   <div class="pm">${label} · ${band.name}</div>`);
@@ -5159,7 +5169,8 @@ function renderStationLayer(layer) {
       L.marker([s.lat, s.lng], { icon }).addTo(sgMapLayers.markers)
         .bindPopup(`<div class="pt">${s.name}</div>
                     <div class="pv" style="color:${band.color === '#ffffff' ? '#ccc' : band.color}">${Number(s.value).toFixed(1)}${units}</div>
-                    <div class="pm">${label} · Heat Stress: <b style="color:${band.color === '#ffffff' ? '#ccc' : band.color}">${band.name}</b></div>`);
+                    <div class="pm">${label} · Heat Stress: <b style="color:${band.color === '#ffffff' ? '#ccc' : band.color}">${band.name}</b></div>
+                    <div class="pm" style="margin-top:4px"><b>Work : Rest</b> · ${band.workRest}</div>`);
     } else {
       L.circleMarker([s.lat, s.lng], {
         radius: 9,
@@ -5191,12 +5202,13 @@ function renderSGMapLegend() {
             <div class="row"><div class="pip" style="background:#ffa336"></div> 151-250 High (Band 3)</div>
             <div class="row"><div class="pip" style="background:#ff4d4d"></div> ≥251 Very High (Band 4)</div>`;
   } else if (sgActiveLayer === 'temp') {
-    rows = `<div class="row"><div class="pip" style="background:#ffffff;border:1px solid #555"></div> ≤29.9°C Low</div>
-            <div class="row"><div class="pip" style="background:#2ecc71"></div> 30.0-30.9°C Elevated</div>
-            <div class="row"><div class="pip" style="background:#f1c40f"></div> 31.0-31.9°C Caution</div>
-            <div class="row"><div class="pip" style="background:#e74c3c"></div> 32.0-32.9°C Danger</div>
-            <div class="row"><div class="pip" style="background:#000000;border:1px solid #fff"></div> 33.0-34.9°C Extreme</div>
-            <div class="row"><div class="pip" style="background:#bfc7d2;border:1px solid #555"></div> ≥35.0°C Off-scale</div>`;
+    rows = `<div class="legend-subhead">Work : Rest (min)</div>
+            <div class="row"><div class="pip" style="background:#ffffff;border:1px solid #555"></div> ≤29.9°C · 60:15</div>
+            <div class="row"><div class="pip" style="background:#2ecc71"></div> 30.0-30.9°C · 45:15</div>
+            <div class="row"><div class="pip" style="background:#f1c40f"></div> 31.0-31.9°C · 30:15</div>
+            <div class="row"><div class="pip" style="background:#e74c3c"></div> 32.0-32.9°C · 30:30</div>
+            <div class="row"><div class="pip" style="background:#000000;border:1px solid #fff"></div> 33.0-34.9°C · 15:30</div>
+            <div class="row"><div class="pip" style="background:#bfc7d2;border:1px solid #555"></div> ≥35.0°C · No strenuous training</div>`;
   } else if (sgActiveLayer === 'rain') {
     rows = `<div class="row"><div class="pip" style="background:#4fd1c5"></div> 0 mm Dry</div>
             <div class="row"><div class="pip" style="background:#5ed67b"></div> &lt;2.5 Light</div>
