@@ -3213,6 +3213,20 @@
 
 <script>
 // ============================================================
+//  TELEGRAM BRIDGE CONFIG
+//  These two values point at a Cloudflare Worker that holds the
+//  bot token. The HTML never sees the bot token directly.
+//
+//  To disable Telegram alerts entirely, set TELEGRAM_BRIDGE_URL = ''
+//  Note: the SHARED_SECRET is visible to anyone who views the page
+//  source. Worst-case if it leaks: a stranger can spam alerts to
+//  your one Telegram chat — easy to recover by rotating the secret
+//  on the Cloudflare Worker.
+// ============================================================
+const TELEGRAM_BRIDGE_URL    = 'https://gsoc-monitoring.gsocteamic.workers.dev';
+const TELEGRAM_SHARED_SECRET = 'gsoc-bridge-1231733123';
+
+// ============================================================
 //  DATA — mock feeds. Replace with real APIs in production.
 // ============================================================
 const NOW = new Date();
@@ -3967,8 +3981,9 @@ async function refreshAllLiveData(opts = {}) {
   setSourceStatusUI(true);
   if (showToast) showRefreshBanner('<span class="spin-icon">⟳</span> Refreshing live data from all sources…');
 
-  // Also refresh SG data in parallel if the view has been loaded
-  const sgFetchPromise = (typeof fetchSingaporeData === 'function' && sgData && sgData.lastFetch)
+  // Refresh SG data in parallel — always, even if the user hasn't opened the
+  // SG Focus tab yet. Manual refresh means "freshen everything".
+  const sgFetchPromise = (typeof fetchSingaporeData === 'function')
     ? fetchSingaporeData().then(() => {
         if (typeof fetchSGWeatherData === 'function') return fetchSGWeatherData();
       }).catch(e => console.warn('SG fetch failed:', e))
@@ -3989,6 +4004,8 @@ async function refreshAllLiveData(opts = {}) {
   // Re-evaluate personnel × incident alerts after new data arrives
   personnelAlertsDismissed = false;
   if (typeof renderPersonnelAlertBanner === 'function') renderPersonnelAlertBanner();
+  // Telegram alerts (silent if bridge URL is empty)
+  if (typeof maybeSendTelegramAlerts === 'function') maybeSendTelegramAlerts();
 
   // Wait for SG too, then re-render SG view
   await sgFetchPromise;
@@ -7826,6 +7843,7 @@ async function refreshHazardDataOnly() {
     setSourceStatusUI(false);
     lastHazardAutoRefresh = Date.now();
     updateHazardLastRefreshed(new Date().toISOString());
+    if (typeof maybeSendTelegramAlerts === 'function') maybeSendTelegramAlerts();
     console.log(`[auto-refresh] Hazard data refreshed at ${new Date().toLocaleTimeString('en-GB')}`);
   } catch (e) {
     console.error('[auto-refresh] Hazard refresh failed:', e);
@@ -7982,6 +8000,108 @@ function startAutoRefreshTimers() {
   });
 
   console.log(`[auto-refresh] Scheduled — hazards every ${AUTO_REFRESH_HAZARD_MS/60000}min, SG full every ${AUTO_REFRESH_SG_MS/60000}min, temperature every ${AUTO_REFRESH_TEMP_MS/60000}min, rainfall every ${AUTO_REFRESH_RAIN_MS/60000}min`);
+}
+
+// ============================================================
+//  TELEGRAM NOTIFIER
+//  After each hazard refresh, find new Critical/Warning incidents
+//  and POST them to the Cloudflare Worker, which forwards to Telegram.
+//
+//  - Disabled if TELEGRAM_BRIDGE_URL is empty
+//  - localStorage dedup so we don't re-spam on page reload
+//  - 24h cutoff on first run so we don't dump every old alert at once
+//  - Silent failure (logs to console only) — never breaks the dashboard
+// ============================================================
+const TELEGRAM_NOTIFIED_KEY = 'hadr_telegram_notified_ids_v1';
+const TELEGRAM_NOTIFIED_MAX = 500;
+
+let telegramNotifiedIds = new Set();
+(function loadNotifiedIds() {
+  try {
+    const raw = localStorage.getItem(TELEGRAM_NOTIFIED_KEY);
+    if (raw) {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) telegramNotifiedIds = new Set(arr);
+    }
+  } catch (e) { /* ignore */ }
+})();
+
+function saveTelegramNotifiedIds() {
+  try {
+    let ids = Array.from(telegramNotifiedIds);
+    if (ids.length > TELEGRAM_NOTIFIED_MAX) {
+      ids = ids.slice(-Math.floor(TELEGRAM_NOTIFIED_MAX / 2));
+      telegramNotifiedIds = new Set(ids);
+    }
+    localStorage.setItem(TELEGRAM_NOTIFIED_KEY, JSON.stringify(ids));
+  } catch (e) { /* ignore */ }
+}
+
+function incidentTelegramId(d) {
+  if (!d) return '';
+  if (d.id) return String(d.id);
+  return [d.code || '?', d.hazard || '?', d.event || '?', d.updated || ''].join('|');
+}
+
+async function maybeSendTelegramAlerts() {
+  // Disabled if config is empty
+  if (!TELEGRAM_BRIDGE_URL || !TELEGRAM_SHARED_SECRET) return;
+  if (typeof DATA === 'undefined' || !Array.isArray(DATA)) return;
+
+  // Find Critical/Warning incidents from the last 24h.
+  // Excludes air-quality / haze events — user opted out of those alerts.
+  const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+  const candidates = DATA.filter(d =>
+    !d.nominal &&
+    d.hazard !== 'haze' &&
+    (d.severity === 'crit' || d.severity === 'warn') &&
+    d.updated &&
+    new Date(d.updated).getTime() >= cutoff
+  );
+
+  // Filter out already-notified
+  const toSend = candidates.filter(d => !telegramNotifiedIds.has(incidentTelegramId(d)));
+  if (!toSend.length) return;
+
+  console.log(`[telegram] sending ${toSend.length} new alert(s)…`);
+
+  const payload = {
+    incidents: toSend.map(d => ({
+      id:        incidentTelegramId(d),
+      severity:  d.severity,
+      country:   (typeof ISO2_TO_NAME !== 'undefined' && ISO2_TO_NAME[d.code]) || d.name || d.code || 'Unknown',
+      code:      d.code,
+      event:     d.event || d.subtype || 'Incident',
+      desc:      d.desc || '',
+      source:    d.source || '—',
+      updated:   d.updated,
+      threshold: d.threshold || '—',
+    })),
+  };
+
+  try {
+    const r = await fetch(TELEGRAM_BRIDGE_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Auth-Token': TELEGRAM_SHARED_SECRET,
+      },
+      body: JSON.stringify(payload),
+    });
+    const result = await r.json();
+    if (result?.sent > 0) {
+      // Mark sent ones as notified
+      toSend.slice(0, result.sent).forEach(d => telegramNotifiedIds.add(incidentTelegramId(d)));
+      saveTelegramNotifiedIds();
+      console.log(`[telegram] ✓ sent ${result.sent} alert(s) (${result.errors || 0} errors)`);
+    } else if (result?.errors > 0) {
+      console.warn('[telegram] all sends failed:', result.errorDetails);
+    } else if (!r.ok) {
+      console.warn(`[telegram] bridge returned ${r.status}:`, result);
+    }
+  } catch (e) {
+    console.warn('[telegram] bridge unreachable:', e.message);
+  }
 }
 
 async function bootApp() {
