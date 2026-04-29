@@ -2009,6 +2009,20 @@
     border: 1px solid var(--line);
     display: inline-block;
   }
+  .personnel-sync-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    margin-top: 8px;
+    margin-left: 8px;
+    padding: 5px 10px;
+    border: 1px solid var(--line);
+    display: inline-block;
+    cursor: help;
+  }
+  .personnel-sync-badge.connecting { color: var(--text-mute); border-color: var(--line-2); }
+  .personnel-sync-badge.ok         { color: var(--ok);       border-color: var(--ok); }
+  .personnel-sync-badge.err        { color: var(--warn);     border-color: var(--warn); }
 
   .sg-wrap { max-width: 1100px; margin: 0 auto; }
   .sg-header {
@@ -2933,6 +2947,7 @@
           <div class="personnel-title">⬢ Personnel Disposition — Country / Region Browser</div>
           <div class="personnel-sub">Select a country or region to view sub-units. Click <b>🔒 Lock</b> to re-secure this view.</div>
           <div class="personnel-summary" id="personnel-summary">No personnel locations confirmed.</div>
+          <div class="personnel-sync-badge connecting" id="personnel-sync-badge" title="Cloudflare D1 sync status — changes are saved across all users">◌ CONNECTING</div>
         </div>
         <button class="personnel-lock-btn" onclick="lockPersonnelTab()">🔒 Lock</button>
       </div>
@@ -5565,6 +5580,11 @@ document.querySelectorAll('.views button').forEach(b => {
     if (b.dataset.view === 'clocks') {
       renderClocks();
     }
+    // Refresh personnel state from D1 immediately when entering Personnel tab —
+    // user shouldn't have to wait up to 5s for the next poll
+    if (b.dataset.view === 'personnel' && typeof fetchPersonnelStateFromBridge === 'function') {
+      fetchPersonnelStateFromBridge();
+    }
     // Personnel tab: focus password input or re-render
     if (b.dataset.view === 'personnel') {
       if (personnelUnlocked) {
@@ -7063,9 +7083,17 @@ let personnelPath = []; // breadcrumb path
 
 // Per-sub-unit presence state, persisted to localStorage.
 // Shape: { "usa|CA": { others: true, othersWhen: "...", exercises: true, exercisesWhen: "...", by: "..." } }
-// Backwards compatible with the old shape { present: true, when: "...", by: "..." } — migrated to "others".
+// Source of truth: Cloudflare D1 (via PERSONNEL_BRIDGE_URL). localStorage is
+// used only as a fallback cache when the bridge is unreachable.
 let personnelPresence = {};
+let personnelSyncOk = null;       // null=unknown, true=last sync ok, false=last sync failed
+let personnelLastSyncAt = 0;
+let personnelPollTimer = null;
+
+const PERSONNEL_BRIDGE_URL = TELEGRAM_BRIDGE_URL ? TELEGRAM_BRIDGE_URL + '/personnel-state' : '';
+
 (function loadPresence() {
+  // Boot sequence: 1) try D1; 2) on failure, fall back to localStorage cache
   try {
     const raw = localStorage.getItem('hadr_personnel_presence');
     if (raw) personnelPresence = JSON.parse(raw) || {};
@@ -7080,10 +7108,144 @@ let personnelPresence = {};
   } catch (e) { personnelPresence = {}; }
 })();
 
+// ====== D1-backed sync ======
+
+// Fetch state from D1 and merge into local cache. Re-renders the Personnel
+// view if it's currently active so changes from other users appear.
+async function fetchPersonnelStateFromBridge() {
+  if (!PERSONNEL_BRIDGE_URL || !TELEGRAM_SHARED_SECRET) return false;
+  try {
+    const r = await fetch(PERSONNEL_BRIDGE_URL, {
+      method: 'GET',
+      headers: { 'X-Auth-Token': TELEGRAM_SHARED_SECRET },
+    });
+    if (!r.ok) {
+      console.warn('[personnel-sync] GET failed:', r.status);
+      personnelSyncOk = false;
+      updatePersonnelSyncBadge();
+      return false;
+    }
+    const data = await r.json();
+    const remoteState = data?.state || {};
+
+    // Build new local map from remote state. Other fields (othersWhen, by, etc)
+    // are derived from last_updated since D1 doesn't store them separately.
+    const newPresence = {};
+    for (const [unitKey, rec] of Object.entries(remoteState)) {
+      const newRec = {};
+      if (rec.exercises) {
+        newRec.exercises = true;
+        newRec.exercisesWhen = rec.last_updated;
+      }
+      if (rec.others) {
+        newRec.others = true;
+        newRec.othersWhen = rec.last_updated;
+      }
+      if (newRec.exercises || newRec.others) {
+        newRec.by = 'Synced';
+        newPresence[unitKey] = newRec;
+      }
+    }
+
+    // Replace the local cache wholesale — D1 is source of truth
+    personnelPresence = newPresence;
+    // Mirror to localStorage as backup for offline scenarios
+    try { localStorage.setItem('hadr_personnel_presence', JSON.stringify(personnelPresence)); }
+    catch (e) { /* ignore */ }
+
+    personnelSyncOk = true;
+    personnelLastSyncAt = Date.now();
+    updatePersonnelSyncBadge();
+
+    // If Personnel tab is currently active, re-render to show any remote changes
+    if (document.getElementById('personnel-view')?.classList.contains('active') &&
+        typeof renderPersonnelView === 'function') {
+      renderPersonnelView();
+      if (typeof updatePersonnelSummary === 'function') updatePersonnelSummary();
+    }
+    if (typeof renderPersonnelAlertBanner === 'function') {
+      personnelAlertsDismissed = false;
+      renderPersonnelAlertBanner();
+    }
+    return true;
+  } catch (e) {
+    console.warn('[personnel-sync] GET error:', e.message);
+    personnelSyncOk = false;
+    updatePersonnelSyncBadge();
+    return false;
+  }
+}
+
+// Push a single unit's state to D1
+async function pushPersonnelStateToBridge(unitKey) {
+  if (!PERSONNEL_BRIDGE_URL || !TELEGRAM_SHARED_SECRET) return false;
+  const rec = personnelPresence[unitKey] || {};
+  try {
+    const r = await fetch(PERSONNEL_BRIDGE_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Auth-Token': TELEGRAM_SHARED_SECRET,
+      },
+      body: JSON.stringify({
+        unit_key: unitKey,
+        exercises: !!rec.exercises,
+        others: !!rec.others,
+      }),
+    });
+    if (!r.ok) {
+      console.warn('[personnel-sync] POST failed:', r.status);
+      personnelSyncOk = false;
+      updatePersonnelSyncBadge();
+      return false;
+    }
+    personnelSyncOk = true;
+    personnelLastSyncAt = Date.now();
+    updatePersonnelSyncBadge();
+    return true;
+  } catch (e) {
+    console.warn('[personnel-sync] POST error:', e.message);
+    personnelSyncOk = false;
+    updatePersonnelSyncBadge();
+    return false;
+  }
+}
+
+// Visual badge: shows "● SYNCED" when D1 sync is healthy, "⚠ OFFLINE" if not.
+// Element is added once into the personnel header.
+function updatePersonnelSyncBadge() {
+  const el = document.getElementById('personnel-sync-badge');
+  if (!el) return;
+  if (personnelSyncOk === null) {
+    el.textContent = '◌ CONNECTING';
+    el.className = 'personnel-sync-badge connecting';
+  } else if (personnelSyncOk) {
+    const ago = personnelLastSyncAt
+      ? Math.max(0, Math.floor((Date.now() - personnelLastSyncAt) / 1000))
+      : 0;
+    el.textContent = ago < 10 ? '● SYNCED' : `● SYNCED · ${ago}s ago`;
+    el.className = 'personnel-sync-badge ok';
+  } else {
+    el.textContent = '⚠ OFFLINE — using local cache';
+    el.className = 'personnel-sync-badge err';
+  }
+}
+
+// Polling — only when Personnel view is active
+function startPersonnelPolling() {
+  if (personnelPollTimer) return;
+  personnelPollTimer = setInterval(() => {
+    if (document.hidden) return;
+    if (!document.getElementById('personnel-view')?.classList.contains('active')) return;
+    fetchPersonnelStateFromBridge();
+  }, 5000);
+}
+
 function savePersonnelPresence() {
+  // Local mirror only — D1 is the real persistence layer (handled per-toggle)
   try {
     localStorage.setItem('hadr_personnel_presence', JSON.stringify(personnelPresence));
-  } catch (e) { /* ignore storage errors */ }
+  } catch (e) { /* ignore */ }
 }
 
 function togglePersonnelPresence(unitKey, kind, checked) {
@@ -7102,6 +7264,8 @@ function togglePersonnelPresence(unitKey, kind, checked) {
   // If the record now has nothing checked, drop it entirely
   if (!rec.others && !rec.exercises) delete personnelPresence[unitKey];
   savePersonnelPresence();
+  // Fire-and-forget D1 push (optimistic UI — local change shows immediately)
+  pushPersonnelStateToBridge(unitKey);
   personnelAlertsDismissed = false;
   renderPersonnelView();
   updatePersonnelSummary();
@@ -8118,6 +8282,10 @@ async function bootApp() {
   lastTempAutoRefresh = Date.now();
   lastRainAutoRefresh = Date.now();
   startAutoRefreshTimers();
+  // Personnel-state sync: fetch from D1 on boot, then poll every 5s while
+  // the Personnel tab is active to pick up changes from other users
+  fetchPersonnelStateFromBridge();
+  startPersonnelPolling();
   // Check for personnel × incident cross-refs after boot
   setTimeout(renderPersonnelAlertBanner, 1500);
 }
